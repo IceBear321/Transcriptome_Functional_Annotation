@@ -1,112 +1,112 @@
 # Transcriptome Functional Annotation Pipeline
 
-转录组功能注释完整流程，用于从GTF注释文件生成全面的功能注释。
+Complete pipeline for generating comprehensive functional annotations from GTF annotation files.
 
-## 概述
+## Overview
 
-本流程生成分子功能注释信息，包括：
-- **UniProt/SwissProt最佳比对**: 蛋白质序列比对到SwissProt数据库
-- **GO (Gene Ontology)**: 基因本体论注释
-- **KEGG Pathway**: 代谢通路注释
-- **KOG (KEGG Orthology Groups)**: 同源基因簇注释
-- **Pfam Domain**: 蛋白质结构域注释
+This pipeline generates molecular functional annotation information, including:
+- **UniProt/SwissProt best hit**: Protein sequence alignment to SwissProt database
+- **GO (Gene Ontology)**: Gene Ontology annotations
+- **KEGG Pathway**: Metabolic pathway annotations
+- **KOG (KEGG Orthology Groups)**: Ortholog group annotations
+- **Pfam Domain**: Protein domain annotations
 
 ```
-输入GTF → 提取序列 → ORF预测 → Diamond比对 → Pfam注释 → 合并注释
+Input GTF → Extract Sequences → ORF Prediction → Diamond Alignment → Pfam Annotation → Merge Annotations
 ```
 
-## 目录结构
+## Directory Structure
 
 ```
 annotation_pipeline/
 ├── scripts/
-│   ├── 00_download_databases.sh     # 下载数据库
-│   ├── 01_prepare_reference.sh      # 准备参考注释
-│   ├── 02_annotation_pipeline.sh    # 主注释流程
-│   ├── 03_generate_reference_annotations.sh  # 从GTF生成参考注释
-│   └── merge_annotations.py        # 合并注释文件
-├── reference/                        # 数据库文件目录
+│   ├── 00_download_databases.sh     # Download databases
+│   ├── 01_prepare_reference.sh    # Prepare reference annotations
+│   ├── 02_annotation_pipeline.sh  # Main annotation pipeline
+│   ├── 03_generate_reference_annotations.sh  # Generate reference annotations from GTF
+│   └── merge_annotations.py      # Merge annotation files
+├── reference/                       # Database files directory
 ├── docs/
-└── run_full_pipeline.sh            # 一键运行完整流程
+└── run_full_pipeline.sh            # Run complete pipeline
 ```
 
-## 安装依赖
+## Installation
 
-### 创建conda环境
+### Create conda environment
 
 ```bash
-# 创建并激活环境
+# Create and activate environment
 conda create -n annotation python=3.8
 conda activate annotation
 
-# 安装核心软件
+# Install core software
 conda install -c bioconda diamond transdecoder hmmer bedtools gffread
 conda install -c conda-forge pandas
 
-# 安装eggNOG-mapper (可选，用于KOG/GO注释)
+# Install eggNOG-mapper (optional, for KOG/GO annotations)
 pip install eggnog-mapper
 ```
 
-### 依赖软件说明
+### Dependency Software
 
-| 软件 | 用途 | 安装方式 |
-|------|------|----------|
-| **Diamond** | 快速蛋白质比对 | `conda install -c bioconda diamond` |
-| **TransDecoder** | ORF预测 | `conda install -c bioconda transdecoder` |
-| **HMMER/Pfam** | 蛋白质结构域注释 | `conda install -c bioconda hmmer` |
-| **gffread** | 从GTF提取序列 | `conda install -c bioconda gffread` |
-| **bedtools** | 基因组操作 | `conda install -c bioconda bedtools` |
-| **pandas** | 数据处理 | `conda install -c conda-forge pandas` |
+| Software | Purpose | Installation |
+|----------|---------|--------------|
+| **Diamond** | Fast protein alignment | `conda install -c bioconda diamond` |
+| **TransDecoder** | ORF prediction | `conda install -c bioconda transdecoder` |
+| **HMMER/Pfam** | Protein domain annotation | `conda install -c bioconda hmmer` |
+| **gffread** | Extract sequences from GTF | `conda install -c bioconda gffread` |
+| **bedtools** | Genome operations | `conda install -c bioconda bedtools` |
+| **pandas** | Data processing | `conda install -c conda-forge pandas` |
 
-## 数据库下载
+## Database Download
 
-### 手动下载 (推荐)
+### Manual Download (Recommended)
 
 1. **UniProt SwissProt**:
-   - 下载地址: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/
-   - 文件: `uniprot_sprot.fasta.gz`
-   - 创建Diamond数据库: `diamond makedb --in uniprot_sprot.fasta.gz -d uniprot_sprot.dmnd`
+   - Download: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/
+   - File: `uniprot_sprot.fasta.gz`
+   - Create Diamond database: `diamond makedb --in uniprot_sprot.fasta.gz -d uniprot_sprot.dmnd`
 
 2. **Pfam**:
-   - 下载地址: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/
-   - 文件: `Pfam-A.hmm.gz`
-   - 解压后使用: `hmmpress Pfam-A.hmm`
+   - Download: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/
+   - File: `Pfam-A.hmm.gz`
+   - After decompressing: `hmmpress Pfam-A.hmm`
 
-3. **eggNOG** (可选):
-   - 使用Python安装: `python -m eggnog_downloader.downloader --data_dir ./eggnog --taxid TAXID`
-   - TAXID参考: 人类=9606, 小鼠=10090, 拟南芥=3702, 苜蓿=3880
+3. **eggNOG** (optional):
+   - Install via Python: `python -m eggnog_downloader.downloader --data_dir ./eggnog --taxid TAXID`
+   - TAXID reference: Human=9606, Mouse=10090, Arabidopsis=3702, Medicago=3880
 
 4. **KEGG**:
-   - 需要从 https://www.genome.jp/tools/kaas/ 网页上传序列
-   - 或使用本地工具 KofamScan
+   - Requires manual download from https://www.genome.jp/tools/kaas/
+   - Or use local tool KofamScan
 
-### 使用脚本自动下载
+### Auto Download Script
 
 ```bash
 bash scripts/00_download_databases.sh ./reference 16
 ```
 
-参数说明：
-- `$1`: 数据库保存目录 (默认: ./reference)
-- `$2`: 线程数 (默认: 16)
+Parameters:
+- `$1`: Database save directory (default: ./reference)
+- `$2`: Number of threads (default: 16)
 
-## 快速开始
+## Quick Start
 
-### 方式一: 一键运行完整流程
+### Option 1: Run Full Pipeline
 
 ```bash
 bash run_full_pipeline.sh \
-    /path/to/input.gtf \          # 输入GTF文件
-    /path/to/genome.fa \          # 参考基因组FASTA
-    /path/to/reference.gtf \       # 参考GTF (可选)
-    ./reference \                 # 数据库目录
-    ./annotation_results          # 输出目录
+    /path/to/input.gtf \          # Input GTF file
+    /path/to/genome.fa \          # Reference genome FASTA
+    /path/to/reference.gtf \       # Reference GTF (optional)
+    ./reference \                 # Database directory
+    ./annotation_results          # Output directory
 ```
 
-### 方式二: 分步运行
+### Option 2: Step-by-Step
 
 ```bash
-# Step 1: 运行注释主流程
+# Step 1: Run main annotation pipeline
 cd annotation_results
 bash ../scripts/02_annotation_pipeline.sh \
     /path/to/input.gtf \
@@ -116,7 +116,7 @@ bash ../scripts/02_annotation_pipeline.sh \
     . \
     16
 
-# Step 2: 生成参考注释
+# Step 2: Generate reference annotations
 bash ../scripts/03_generate_reference_annotations.sh \
     /path/to/reference.gtf \
     reference_transcripts.fa \
@@ -125,7 +125,7 @@ bash ../scripts/03_generate_reference_annotations.sh \
     16 \
     /path/to/genome.fa
 
-# Step 3: 合并注释
+# Step 3: Merge annotations
 python3 ../scripts/merge_annotations.py \
     --anno_uniprot_besthit anno_uniprot_besthit.tsv \
     --trans_uniprot reference_trans_uniprot.xls \
@@ -137,23 +137,23 @@ python3 ../scripts/merge_annotations.py \
     --one_row_per_qseqid
 ```
 
-## 输入文件格式
+## Input File Formats
 
-### GTF文件格式要求
+### GTF File Format Requirements
 
-GTF文件必须包含以下属性:
-- `transcript_id`: 转录本ID
-- `gene_id`: 基因ID
-- `gene_name`: 基因名称 (可选)
+GTF file must contain the following attributes:
+- `transcript_id`: Transcript ID
+- `gene_id`: Gene ID
+- `gene_name`: Gene name (optional)
 
-示例:
+Example:
 ```
 chr1    StringTie   transcript  11873   14409   .   +   .   gene_id "MSTRG.1"; transcript_id "MSTRG.1.1"; gene_name "AT1G01020";
 ```
 
-### 基因组FASTA
+### Genome FASTA
 
-标准FASTA格式，支持.gz压缩:
+Standard FASTA format, supports .gz compression:
 ```
 >chr1
 ATGCGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
@@ -161,182 +161,138 @@ ATGCGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
 GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
 ```
 
-## 输出文件说明
+## Output File Description
 
-| 文件名 | 描述 |
-|--------|------|
-| `transcripts.fa` | 转录本核苷酸序列 |
-| `transcripts.transdecoder.pep` | 预测的蛋白质序列 (ORF) |
-| `diamond_blastp.outfmt6` | Diamond蛋白质比对结果 |
-| `TrinotatePFAM.out` | Pfam结构域注释 |
-| `anno_uniprot_besthit.tsv` | UniProt最佳比对 |
-| `merged_annotations.tsv` | 最终整合注释 |
+| File | Description |
+|------|-------------|
+| `transcripts.fa` | Transcript nucleotide sequences |
+| `transcripts.transdecoder.pep` | Predicted protein sequences (ORF) |
+| `diamond_blastp.outfmt6` | Diamond protein alignment results |
+| `TrinotatePFAM.out` | Pfam domain annotations |
+| `anno_uniprot_besthit.tsv` | UniProt best hit |
+| `merged_annotations.tsv` | Final integrated annotation |
 
-### merged_annotations.tsv 输出列说明
+### merged_annotations.tsv Output Column Description
 
-| 列名 | 描述 | 示例 |
-|------|------|------|
-| qseqid | 查询序列ID | ONT.2.1 |
+| Column | Description | Example |
+|--------|-------------|---------|
+| qseqid | Query sequence ID | ONT.2.1 |
 | accession | UniProt accession | A0A072TI93 |
-| SeqID | 转录本ID | Msa0066300-mRNA-1 |
-| GOterm | GO术语 | GO:0016310 |
-| NameSpace | GO命名空间 | biological_process |
-| Description | 描述 | phosphorylation |
+| SeqID | Transcript ID | Msa0066300-mRNA-1 |
+| GOterm | GO term | GO:0016310 |
+| NameSpace | GO namespace | biological_process |
+| Description | Description | phosphorylation |
 | kegg_accession | KEGG accession | K00859 |
-| kegg_annotation | KEGG注释 | coaE dephospho-CoA kinase |
-| KogClassName | KOG分类名 | Chaperone HSP104 |
+| kegg_annotation | KEGG annotation | coaE dephospho-CoA kinase |
+| KogClassName | KOG classification name | Chaperone HSP104 |
 | pfam_accession | Pfam ID | PF01121.25 |
-| HMMProfile | HMM模型名 | CoaE |
-| pfam_description | Pfam描述 | Dephospho-CoA kinase |
+| HMMProfile | HMM model name | CoaE |
+| pfam_description | Pfam description | Dephospho-CoA kinase |
 
-## 脚本详细说明
+## Script Details
 
 ### 00_download_databases.sh
 
-下载并准备所需的数据库文件。
+Download and prepare required database files.
 
-**参数:**
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `$1` | ./reference | 数据库保存目录 |
-| `$2` | 16 | 并行线程数 |
+**Parameters:**
+| Parameter | Default | Description |
+|-----------|----------|-------------|
+| `$1` | ./reference | Database save directory |
+| `$2` | 16 | Number of parallel threads |
 
-**输出文件:**
-- `uniprot_sprot.fasta.gz`: SwissProt序列
-- `uniprot_sprot.dmnd`: Diamond数据库
-- `Pfam-A.hmm`: Pfam HMM模型
+**Output Files:**
+- `uniprot_sprot.fasta.gz`: SwissProt sequences
+- `uniprot_sprot.dmnd`: Diamond database
+- `Pfam-A.hmm`: Pfam HMM models
 
-**注意事项:**
-- 首次下载需要较大空间 (约2GB)
-- Diamond建库可能需要较长时间
-- KEGG需要手动从网页下载
+**Notes:**
+- First download requires ~2GB space
+- Diamond database creation may take a long time
+- KEGG requires manual download from website
 
 ---
 
 ### 02_annotation_pipeline.sh
 
-主注释流程脚本。
+Main annotation pipeline script.
 
-**参数:**
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `$1` | 输入GTF文件 | `/path/to/stringtie.gtf` |
-| `$2` | 参考基因组FASTA | `/path/to/genome.fa` |
-| `$3` | 参考GTF (可选) | `/path/to/ref.gtf` |
-| `$4` | 数据库目录 | `./reference` |
-| `$5` | 输出目录 | `./annotation_results` |
-| `$6` | 线程数 | 16 |
+**Parameters:**
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `$1` | Input GTF file | `/path/to/stringtie.gtf` |
+| `$2` | Reference genome FASTA | `/path/to/genome.fa` |
+| `$3` | Reference GTF (optional) | `/path/to/ref.gtf` |
+| `$4` | Database directory | `./reference` |
+| `$5` | Output directory | `./annotation_results` |
+| `$6` | Thread count | 16 |
 
-**步骤详解:**
+**Steps:**
 
-#### Step 1: 提取转录本序列
+#### Step 1: Extract transcript sequences
 ```bash
 gffread input.gtf -g genome.fa -w transcripts.fa
 ```
-- 使用gffread从GTF和基因组提取转录本核苷酸序列
-- 确保基因组FASTA索引存在 (.fai)
 
-#### Step 2: ORF预测
+#### Step 2: ORF prediction
 ```bash
 TransDecoder.LongOrfs -t transcripts.fa -m 100
 TransDecoder.Predict -t transcripts.fa
 ```
-- `-m 100`: 最小ORF长度100氨基酸
-- 输出: `transcripts.transdecoder.pep`
 
-**注意**: 仅保留最长的ORF，可能丢失部分转录本
-
-#### Step 3: Diamond比对
+#### Step 3: Diamond alignment
 ```bash
 diamond blastp --db uniprot_sprot.dmnd --query transcripts.transdecoder.pep \
     --outfmt 6 --max-target-seqs 1 --evalue 1e-5 --threads 16
 ```
-- `--max-target-seqs 1`: 只保留最佳比对
-- `--evalue 1e-5`: E-value阈值
-- 可选: 添加物种特异性数据库提高注释率
 
-**Diamond参数调优:**
-| 参数 | 默认值 | 调整建议 |
-|------|--------|----------|
-| `--evalue` | 1e-5 | 严格注释用1e-10 |
-| `--max-target-seqs` | 1 | 保留更多比对设为5 |
-| `--id` | 无 | 最低一致性，如--id 50 |
-| `--query-cover` | 无 | 最低覆盖度，如--query-cover 70 |
-
-#### Step 4: Pfam注释
+#### Step 4: Pfam annotation
 ```bash
 hmmscan --cpu 16 --domtblout TrinotatePFAM.out Pfam-A.hmm proteins.pep
 ```
-- 使用HMMER的hmmscan进行蛋白质结构域注释
-- 输出格式: domain table out
-
-**注意事项:**
-- Pfam数据库较大，耗时较长
-- 可使用`--E 1e-5`设置E-value阈值
-
-#### Step 5: 生成最佳比对
-- 从Diamond结果中提取每个转录本的最佳UniProt匹配
-- 生成`anno_uniprot_besthit.tsv`
 
 ---
 
 ### 03_generate_reference_annotations.sh
 
-从参考GTF生成注释文件，用于后续合并。
+Generate reference annotation files from GTF for downstream merging.
 
-**参数:**
-| 参数 | 说明 |
-|------|------|
-| `$1` | 输入GTF文件 |
-| `$2` | 转录本FASTA输出名 |
-| `$3` | 参考蛋白FASTA (可选) |
-| `$4` | 输出前缀 |
-| `$5` | 线程数 |
-| `$6` | 基因组FASTA |
+**Parameters:**
+| Parameter | Description |
+|-----------|-------------|
+| `$1` | Input GTF file |
+| `$2` | Output transcript FASTA name |
+| `$3` | Reference protein FASTA (optional) |
+| `$4` | Output prefix |
+| `$5` | Thread count |
+| `$6` | Genome FASTA |
 
-**输出文件:**
+**Output Files:**
 - `reference_trans_uniprot.xls`
 - `reference_trans_go.xls`
 - `reference_trans_kegg.xls`
 - `reference_trans_kog.xls`
 - `reference_trans_pfam.xls`
 
-**注意事项:**
-- GO/KEGG/KOG需要额外工具生成
-- 可以使用placeholder文件跳过
-
 ---
 
 ### merge_annotations.py
 
-整合多个注释来源，生成最终注释文件。
+Integrate multiple annotation sources into final annotation file.
 
-**参数:**
-| 参数 | 必需 | 说明 |
-|------|------|------|
-| `--anno_uniprot_besthit` | ✓ | Diamond最佳比对结果 |
-| `--trans_uniprot` | ✓ | 转录本-Uniprot映射 |
-| `--trans_go` | ✓ | GO注释文件 |
-| `--trans_kegg` | ✓ | KEGG注释文件 |
-| `--trans_kog` | ✓ | KOG注释文件 |
-| `--trans_pfam` | ✓ | Pfam注释文件 |
-| `-o/--output` | ✓ | 输出文件路径 |
-| `--one_row_per_qseqid` | ✗ | 每条查询只输出一行 |
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `--anno_uniprot_besthit` | ✓ | Diamond best hit results |
+| `--trans_uniprot` | ✓ | Transcript → UniProt mapping |
+| `--trans_go` | ✓ | GO annotation file |
+| `--trans_kegg` | ✓ | KEGG annotation file |
+| `--trans_kog` | ✓ | KOG annotation file |
+| `--trans_pfam` | ✓ | Pfam annotation file |
+| `-o/--output` | ✓ | Output file path |
+| `--one_row_per_qseqid` | ✗ | One row per query |
 
-**使用方法:**
-```bash
-python scripts/merge_annotations.py \
-    --anno_uniprot_besthit annotation_results/anno_uniprot_besthit.tsv \
-    --trans_uniprot reference/Medicago_Sativa_trans_uniprot.xls \
-    --trans_go reference/Medicago_Sativa_trans_go.xls \
-    --trans_kegg reference/Medicago_Sativa_trans_kegg.xls \
-    --trans_kog reference/Medicago_Sativa_trans_kog.xls \
-    --trans_pfam reference/Medicago_Sativa_trans_pfam.xls \
-    -o merged_annotations.tsv \
-    --one_row_per_qseqid
-```
-
-## 参考注释文件格式
+## Reference Annotation File Formats
 
 ### trans_uniprot.xls
 ```
@@ -368,110 +324,109 @@ SeqID	Accession	HMMProfile	Description
 Msa0000010-mRNA-1	PF00004	AAA	ATPase family...
 ```
 
-## 常见问题
+## Common Issues
 
-### 1. 注释率低怎么办？
+### Issue 1: Low annotation rate
 
-**原因分析:**
-- 转录本太短 (无ORF)
-- 新物种/特有基因
-- ORF预测失败
+**Cause analysis:**
+- Transcripts too short (no ORF)
+- New species/specific genes
+- ORF prediction failed
 
-**解决方案:**
-- 添加物种特异性数据库
-- 降低Diamond E-value阈值
-- 使用Trinity进行从头注释
-- 检查ORF预测是否正确
+**Solutions:**
+- Add species-specific database
+- Lower Diamond E-value threshold
+- Use Trinity for de novo annotation
+- Check if ORF prediction is correct
 
-### 2. Diamond比对时间过长
+### Issue 2: Diamond alignment takes too long
 
-**解决方案:**
-- 增加线程数
-- 使用--ultra-sensitive参数
-- 预先建立数据库索引
+**Solutions:**
+- Increase thread count
+- Use --ultra-sensitive parameter
+- Pre-build database index
 
-### 3. Pfam注释失败
+### Issue 3: Pfam annotation failed
 
-**检查项:**
-- HMM数据库是否正确解压
-- hmmpress是否运行
-- 蛋白质序列格式是否正确
+**Check:**
+- Is HMM database properly decompressed?
+- Was hmmpress run?
+- Is protein sequence format correct?
 
-### 4. 内存不足
+### Issue 4: Memory insufficient
 
-**解决方案:**
-- 减小批量处理大小
-- 使用--block-size参数
-- 增加swap空间
+**Solutions:**
+- Reduce batch processing size
+- Use --block-size parameter
+- Increase swap space
 
-### 5. GTF格式错误
+### Issue 5: GTF format errors
 
-**常见错误:**
-- 缺少必须的属性字段
-- 染色体名称不匹配
-- 坐标超出范围
+**Common errors:**
+- Missing required attribute fields
+- Chromosome names don't match
+- Coordinates out of range
 
-**检查方法:**
+**Check:**
 ```bash
-# 验证GTF格式
+# Validate GTF format
 gffread -E input.gtf -o /dev/null 2>&1
 
-# 查看转录本数量
+# Count transcripts
 grep -c 'transcript' input.gtf
 ```
 
-## 物种特异性注释
+## Species-Specific Annotations
 
-### 苜蓿 (Medicago sativa)
+### Medicago (Medicago sativa)
 
-1. 下载参考基因组
-2. 使用StringTie进行注释
-3. 运行本流程
-4. 使用Medicago truncatula (TAXID: 3880) 数据库
+1. Download reference genome
+2. Use StringTie for annotation
+3. Run this pipeline
+4. Use Medicago truncatula (TAXID: 3880) database
 
-### 拟南芥 (Arabidopsis thaliana)
+### Arabidopsis (Arabidopsis thaliana)
 
 - TAXID: 3702
-- 推荐数据库: TAIR
-- 可使用Araport11注释
+- Recommended database: TAIR
+- Can use Araport11 annotation
 
-### 水稻 (Oryza sativa)
+### Rice (Oryza sativa)
 
 - TAXID: 4530
-- 推荐使用MSU注释
+- Recommended: MSU annotation
 
-## 性能优化
+## Performance Optimization
 
-### 并行化
+### Parallelization
 
 ```bash
-# 使用更多线程
+# Use more threads
 THREADS=32 bash scripts/02_annotation_pipeline.sh ...
 
-# 使用GNU parallel进行批量处理
+# Use GNU parallel for batch processing
 parallel -j 8 diamond blastp ::: *.pep
 ```
 
-### 内存优化
+### Memory Optimization
 
 ```bash
-# Diamond分块处理
+# Diamond chunked processing
 diamond blastp --db db.dmnd --query query.fa --out out.tsv \
     --block-size 10 --threads 16
 ```
 
-## 引用
+## Citation
 
-如果使用本流程，请引用以下工具:
-
+If using this pipeline, please cite:
 - **Diamond**: Buchfink B, Xie Y, Huson DH. Fast and sensitive protein alignment using DIAMOND. Nature Methods. 2015
 - **TransDecoder**: Haas BJ, et al. TransDecoder: finding coding regions in genome sequences. 2013
 - **HMMER**: Finn RD, Clements J, Eddy SR. HMMER web server: interactive sequence similarity searching. Nucleic Acids Research. 2011
 
-## 许可证
+## License
 
 MIT License
 
-## 联系方式
+## Contact
 
-问题反馈: https://github.com/IceBear321/Transcriptome_Functional_Annotation/issues
+For issues: https://github.com/IceBear321/Transcriptome_Functional_Annotation/issues
