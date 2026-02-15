@@ -1,17 +1,17 @@
-# Step 3: Diamond蛋白质比对
+# Step 3: Diamond Protein Alignment
 
-## 目的
+## Purpose
 
-将预测的蛋白质序列比对到UniProt SwissProt数据库，获取最佳匹配，用于推断蛋白质功能和获取GO/KEGG注释。
+Align predicted protein sequences to UniProt SwissProt database to obtain best matches for inferring protein function and obtaining GO/KEGG annotations.
 
-## 使用工具
+## Tool Used
 
-**Diamond**: 比BLAST快数千倍的蛋白质比对工具，适合大规模注释任务。
+**Diamond**: A protein alignment tool that is thousands of times faster than BLAST, suitable for large-scale annotation tasks.
 
-## 命令
+## Commands
 
 ```bash
-# 蛋白质vs蛋白质比对 (blastp)
+# Protein vs Protein alignment (blastp)
 diamond blastp \
     --db /path/to/uniprot_sprot.dmnd \
     --query transcripts.transdecoder.pep \
@@ -21,7 +21,7 @@ diamond blastp \
     --threads 16 \
     --out diamond_blastp.outfmt6
 
-# 核苷酸vs蛋白质比对 (blastx) - 可选
+# Nucleotide vs Protein alignment (blastx) - Optional
 diamond blastx \
     --db /path/to/uniprot_sprot.dmnd \
     --query transcripts.fa \
@@ -32,72 +32,72 @@ diamond blastx \
     --out diamond_blastx.outfmt6
 ```
 
-## 参数详解
+## Parameter Details
 
-### 常用参数
+### Common Parameters
 
-| 参数 | 说明 | 建议值 |
-|------|------|--------|
-| `--db` | Diamond数据库路径 | (必需) |
-| `--query` | 查询序列文件 | (必需) |
-| `--out` | 输出文件 | (必需) |
-| `--outfmt` | 输出格式 | 6 (BLAST tabular) |
-| `--max-target-seqs` | 最大目标序列数 | 1 |
-| `--evalue` | E-value阈值 | 1e-5 |
-| `--threads` | 线程数 | 16 |
-| `--id` | 最小一致性 | 可选 |
-| `--query-cover` | 最小查询覆盖度 | 可选 |
+| Parameter | Description | Recommended |
+|-----------|-------------|-------------|
+| `--db` | Diamond database path | (required) |
+| `--query` | Query sequence file | (required) |
+| `--out` | Output file | (required) |
+| `--outfmt` | Output format | 6 (BLAST tabular) |
+| `--max-target-seqs` | Maximum target sequences | 1 |
+| `--evalue` | E-value threshold | 1e-5 |
+| `--threads` | Thread count | 16 |
+| `--id` | Minimum identity | optional |
+| `--query-cover` | Minimum query coverage | optional |
 
-### 输出格式 (--outfmt 6)
+### Output Format (--outfmt 6)
 
-标准BLAST表格格式，包含12列:
+Standard BLAST tabular format with 12 columns:
 
-| 列 | 说明 |
-|----|------|
-| 1 | 查询序列ID (qseqid) |
-| 2 | 目标序列ID (sseqid) |
-| 3 | 一致性百分比 (pident) |
-| 4 | 比对长度 (length) |
-| 5 | 不匹配数 (mismatch) |
-| 6 | 缺失数 (gapopen) |
-| 7 | 查询起始 (qstart) |
-| 8 | 查询结束 (qend) |
-| 9 | 目标起始 (sstart) |
-| 10 | 目标结束 (send) |
+| Column | Description |
+|--------|-------------|
+| 1 | Query sequence ID (qseqid) |
+| 2 | Subject sequence ID (sseqid) |
+| 3 | Identity percentage (pident) |
+| 4 | Alignment length (length) |
+| 5 | Mismatches (mismatch) |
+| 6 | Gap openings (gapopen) |
+| 7 | Query start (qstart) |
+| 8 | Query end (qend) |
+| 9 | Subject start (sstart) |
+| 10 | Subject end (send) |
 | 11 | E-value |
 | 12 | Bit score |
 
-## 数据库准备
+## Database Preparation
 
-### 创建Diamond数据库
+### Create Diamond Database
 
 ```bash
-# 从FASTA创建数据库
+# Create database from FASTA
 diamond makedb --in uniprot_sprot.fasta.gz -d uniprot_sprot.dmnd
 
-# 可选: 添加taxid信息
+# Optional: Add taxid information
 diamond makedb --in uniprot_sprot.fasta.gz -d uniprot_sprot.dmnd --taxonmap prot.accession2taxid.gz
 ```
 
-### 推荐数据库
+### Recommended Databases
 
-1. **SwissProt** (推荐):
-   - 高质量手工注释
-   - 约560,000条序列
-   - 下载: `uniprot_sprot.fasta.gz`
+1. **SwissProt** (Recommended):
+   - High-quality manual annotation
+   - ~560,000 sequences
+   - Download: `uniprot_sprot.fasta.gz`
 
 2. **UniRef90**:
-   - 聚类后非冗余
-   - 约27,000,000条序列
-   - 适合远缘物种
+   - Clustered non-redundant
+   - ~27,000,000 sequences
+   - Good for distant species
 
-3. **物种特异性数据库**:
-   - 可从NCBI构建
-   - 提高注释率
+3. **Species-specific databases**:
+   - Can be built from NCBI
+   - Improves annotation rate
 
-## 参数调优
+## Parameter Tuning
 
-### 严格注释 (减少假阳性)
+### Strict Annotation (Reduce False Positives)
 ```bash
 diamond blastp \
     --db db.dmnd \
@@ -110,7 +110,7 @@ diamond blastp \
     --out result.tsv
 ```
 
-### 宽松注释 (捕获更多同源物)
+### Loose Annotation (Capture More Homologs)
 ```bash
 diamond blastp \
     --db db.dmnd \
@@ -122,7 +122,7 @@ diamond blastp \
     --out result.tsv
 ```
 
-### 快速模式
+### Fast Mode
 ```bash
 diamond blastp \
     --db db.dmnd \
@@ -133,84 +133,84 @@ diamond blastp \
     --out result.tsv
 ```
 
-## 输出文件处理
+## Output File Processing
 
-### 提取最佳比对
+### Extract Best Alignments
 
 ```python
 import pandas as pd
 
-# 读取diamond结果
+# Read diamond results
 df = pd.read_csv('diamond_blastp.outfmt6', 
                  sep='\t',
                  names=['qseqid','sseqid','pident','length','mismatch',
                         'gapopen','qstart','qend','sstart','send','evalue','bitscore'])
 
-# 取每条查询的最佳比对
+# Get best alignment for each query
 best = df.sort_values('bitscore', ascending=False).groupby('qseqid').first().reset_index()
 best.to_csv('best_hits.tsv', sep='\t', index=False)
 ```
 
-## 常见问题
+## Common Issues
 
-### 问题1: 比对率太低
+### Issue 1: Low Alignment Rate
 
-**可能原因:**
-1. 物种太新/特异
-2. 蛋白质序列太短
-3. ORF预测失败
+**Possible causes:**
+1. Species is too new/specific
+2. Protein sequences too short
+3. ORF prediction failed
 
-**解决方案:**
-- 使用物种相关数据库
-- 检查ORF预测结果
-- 降低E-value阈值
+**Solutions:**
+- Use species-related database
+- Check ORF prediction results
+- Lower E-value threshold
 
-### 问题2: 内存不足
+### Issue 2: Insufficient Memory
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 使用分块处理
-diamond blastp --db db.dmnd --query proteins.pep --block-size 5 --out result.tsv
+# Use chunked processing
+diamond blastp --block-size 5 --db db.dmnd --query proteins.pep --out result.tsv
 
-# 或使用--index-chunks
+# Or use --index-chunks
 diamond --index-chunks 4
 ```
 
-### 问题3: 比对速度太慢
+### Issue 3: Alignment Too Slow
 
-**解决方案:**
-- 增加线程数
-- 使用--ultra-sensitive (反而可能更快)
-- 减小查询文件大小
+**Solutions:**
+- Increase thread count
+- Use --ultra-sensitive (may actually be faster)
+- Reduce query file size
 
-### 问题4: 数据库太大
+### Issue 4: Database Too Large
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 提取物种子集
+# Extract species subset
 diamond get_species_taxids -d db.dmnd --taxonlist 3702,3880,9606 > species.dmnd
 
-# 或提取特定分类
+# Or extract specific taxonomy
 diamond subsetdb -d uniprot.dmnd -o plant.dmnd --taxon 33090  # Viridiplantae
 ```
 
-## 性能基准
+## Performance Benchmark
 
-| 数据库 | 序列数 | 索引大小 | 10K查询耗时 |
-|--------|--------|----------|-------------|
-| SwissProt | 560K | 2.5GB | ~30秒 |
-| UniRef90 | 27M | 45GB | ~10分钟 |
-| NR | 250M | 400GB | ~1小时 |
+| Database | Sequences | Index Size | 10K Query Time |
+|----------|-----------|------------|----------------|
+| SwissProt | 560K | 2.5GB | ~30 sec |
+| UniRef90 | 27M | 45GB | ~10 min |
+| NR | 250M | 400GB | ~1 hour |
 
-## 验证结果
+## Verify Results
 
 ```bash
-# 统计比对成功率
+# Calculate alignment success rate
 awk '{print $1}' diamond_blastp.outfmt6 | sort -u | wc -l
 
-# 统计唯一比对数
+# Count unique alignments
 awk '$11<1e-10' diamond_blastp.outfmt6 | wc -l
 
-# 查看一致性分布
+# View identity distribution
 awk '{print $3}' diamond_blastp.outfmt6 | sort -n | uniq -c | tail -20
 ```

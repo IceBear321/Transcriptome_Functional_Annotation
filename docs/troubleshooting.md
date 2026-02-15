@@ -1,412 +1,393 @@
-# 故障排除指南
+# Troubleshooting Guide
 
-本文档列出使用转录组功能注释流程时可能遇到的常见问题及其解决方案。
+This document lists common issues and solutions when using the transcriptome functional annotation pipeline.
 
-## 目录
+## Table of Contents
 
-1. [数据准备问题](#数据准备问题)
-2. [安装问题](#安装问题)
-3. [运行问题](#运行问题)
-4. [输出问题](#输出问题)
-5. [性能问题](#性能问题)
+1. [Data Preparation Issues](#data-preparation-issues)
+2. [Installation Issues](#installation-issues)
+3. [Runtime Issues](#runtime-issues)
+4. [Output Issues](#output-issues)
+5. [Performance Issues](#performance-issues)
 
 ---
 
-## 数据准备问题
+## Data Preparation Issues
 
-### 问题1: GTF格式不正确
+### Issue 1: Incorrect GTF Format
 
-**症状:**
+**Symptoms:**
 ```
 Error: gffread: Cannot get coordinates from transcript line
 ```
 
-**检查方法:**
+**Check:**
 ```bash
-# 检查GTF是否有正确的转录本行
+# Check if GTF has correct transcript lines
 grep 'transcript' input.gtf | head -3
 
-# 验证GTF格式
+# Validate GTF format
 gffread -E input.gtf -o /dev/null 2>&1
 ```
 
-**解决方案:**
-- 确保GTF包含`transcript`类型的行
-- 确保每行有9列
-- 确保包含`transcript_id`属性
+**Solutions:**
+- Ensure GTF contains `transcript` type lines
+- Ensure each line has 9 columns
+- Ensure `transcript_id` attribute is present
 
-### 问题2: 基因组FASTA索引缺失
+### Issue 2: Missing Genome FASTA Index
 
-**症状:**
+**Symptoms:**
 ```
 Error: Could not locate fasta index file for genome.fa
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 创建faidx索引
+# Create faidx index
 samtools faidx genome.fa
 
-# 或使用gffread创建
+# Or using gffread
 gffread -E input.gtf -g genome.fa -o /dev/null
 ```
 
-### 问题3: 染色体名称不匹配
+### Issue 3: Chromosome Name Mismatch
 
-**症状:**
+**Symptoms:**
 ```
 Error: chromosome 'chr1' not found in genome file!
 ```
 
-**检查:**
+**Check:**
 ```bash
-# 查看GTF中的染色体
+# View chromosomes in GTF
 cut -f1 input.gtf | sort -u | head -10
 
-# 查看基因组FASTA中的染色体
+# View chromosomes in genome FASTA
 grep '^>' genome.fa | head -10
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 统一添加chr前缀
+# Add chr prefix consistently
 sed -i 's/^>/>chr/' genome.fa
 sed -i 's/\tchr/\t/g' input.gtf
 
-# 或去掉chr前缀
+# Or remove chr prefix
 sed -i 's/^chr//' genome.fa
 ```
 
 ---
 
-## 安装问题
+## Installation Issues
 
-### 问题4: Conda环境创建失败
+### Issue 4: Conda Environment Creation Failed
 
-**症状:**
+**Symptoms:**
 ```
 CondaHTTPError: HTTP error 404
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 清除缓存
+# Clear cache
 conda clean --all
 
-# 换源
+# Switch channels
 conda config --add channels conda-forge
 conda config --add channels bioconda
 ```
 
-### 问题5: Diamond数据库创建失败
+### Issue 5: Diamond Database Creation Failed
 
-**症状:**
+**Symptoms:**
 ```
 Error: Error opening sequence file
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 检查文件完整性
+# Check file integrity
 file uniprot_sprot.fasta.gz
 
-# 解压后检查
+# Check after decompression
 gunzip -c uniprot_sprot.fasta.gz | head -10
 
-# 重新下载
+# Re-download
 wget -c ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
 ```
 
-### 问题6: TransDecoder找不到
+### Issue 6: TransDecoder Not Found
 
-**症状:**
+**Symptoms:**
 ```
 Command 'TransDecoder.LongOrfs' not found
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 激活conda环境
+# Activate conda environment
 conda activate annotation
 
-# 或重新安装
+# Or reinstall
 conda install -c bioconda transdecoder -y
 
-# 确认安装
+# Confirm installation
 which TransDecoder.LongOrfs
 ```
 
 ---
 
-## 运行问题
+## Runtime Issues
 
-### 问题7: ORF预测失败
+### Issue 7: ORF Prediction Failed
 
-**症状:**
+**Symptoms:**
 ```
 No ORFs found in transcripts
 ```
 
-**可能原因:**
-1. 转录本太短
-2. 序列不是标准遗传密码
-3. GTF提取的序列有误
+**Possible causes:**
+1. Transcripts too short
+2. Sequence not using standard genetic code
+3. Sequence extraction from GTF has errors
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 检查转录本长度分布
+# Check transcript length distribution
 awk '/^>/{id=$0; next} {print length($0)}' transcripts.fa | sort -n | tail -10
 
-# 降低最小ORF长度
+# Reduce minimum ORF length
 TransDecoder.LongOrfs -t transcripts.fa -m 30
 
-# 检查序列质量
+# Check sequence quality
 head -20 transcripts.fa
 ```
 
-### 问题8: Diamond比对无结果
+### Issue 8: Diamond Alignment Returns No Results
 
-**症状:**
+**Symptoms:**
 ```
 0 hits found
 ```
 
-**检查步骤:**
+**Check:**
 ```bash
-# 检查蛋白质文件
+# Check protein file
 grep -c '^>' proteins.pep
 
-# 检查数据库
+# Check database
 diamond makedb --in proteins.pep --db test --validate
 
-# 检查序列格式
+# Check sequence format
 head -5 proteins.pep
 ```
 
-**解决方案:**
-- 降低E-value阈值
-- 检查ORF预测是否成功
-- 使用物种相关数据库
+**Solutions:**
+- Lower E-value threshold
+- Check if ORF prediction succeeded
+- Use species-specific database
 
-### 问题9: Pfam注释失败
+### Issue 9: Pfam Annotation Failed
 
-**症状:**
+**Symptoms:**
 ```
 Error: hmmscan crashed
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 检查Pfam数据库
+# Check Pfam database
 hmmstat Pfam-A.hmm
 
-# 重新创建索引
+# Re-create index
 hmmpress Pfam-A.hmm
 
-# 检查蛋白质文件格式
+# Check protein file format
 head -3 proteins.pep
 ```
 
 ---
 
-## 输出问题
+## Output Issues
 
-### 问题10: 合并注释失败
+### Issue 10: Merge Annotations Failed
 
-**症状:**
+**Symptoms:**
 ```
 KeyError: 'SeqID'
 ```
 
-**检查:**
+**Check:**
 ```bash
-# 检查列名
+# Check column names
 head -1 anno_uniprot_besthit.tsv
 head -1 trans_uniprot.xls
 ```
 
-**解决方案:**
-- 确认列名匹配
-- 检查文件分隔符(必须是tab)
-- 去除BOM
+**Solutions:**
+- Confirm column names match
+- Check file delimiter (must be tab)
+- Remove BOM
 
 ```bash
-# 检查分隔符
+# Check delimiter
 file merged_annotations.tsv
 
-# 去除BOM
+# Remove BOM
 sed -i '1s/^\xEF\xBB\xBF//' file.tsv
 ```
 
-### 问题11: 注释率低
+### Issue 11: Low Annotation Rate
 
-**症状:**
+**Symptoms:**
 ```
-只有20%的转录本有功能注释
-```
-
-**分析步骤:**
-```bash
-# 统计各步骤成功率
-echo "转录本: $(grep -c '^>' transcripts.fa)"
-echo "蛋白: $(grep -c '^>' proteins.pep)"
-echo "Diamond比对: $(cut -f1 diamond.out | sort -u | wc -l)"
-echo "Pfam注释: $(cut -f3 TrinotatePFAM.out | sort -u | wc -l)"
+Only 20% of transcripts have functional annotations
 ```
 
-**提高注释率的方法:**
-1. 添加物种特异性数据库
-2. 降低E-value阈值
-3. 使用更多数据库(UniRef90, NR)
-4. 使用InterProScan补充注释
-
-### 问题12: 输出文件格式错误
-
-**症状:**
-```
-Excel打开后格式混乱
+**Analysis:**
+```bash# Calculate success rate at each step
+echo "Transcripts: $(grep -c '^>' transcripts.fa)"
+echo "Proteins: $(grep -c '^>' proteins.pep)"
+echo "Diamond hits: $(cut -f1 diamond.out | sort -u | wc -l)"
+echo "Pfam annotations: $(cut -f3 TrinotatePFAM.out | sort -u | wc -l)"
 ```
 
-**说明:** 这是Excel对TSV的处理问题，不是文件本身错误
-
-**解决方案:**
-```bash
-# 转换为CSV
-awk -F'\t' 'BEGIN{OFS=","} {$1=$1; print}' merged_annotations.tsv > merged_annotations.csv
-
-# 或在Excel中导入时选择正确的分隔符
-```
+**Solutions to improve annotation rate:**
+1. Add species-specific database
+2. Lower E-value threshold
+3. Use more databases (UniRef90, NR)
+4. Use InterProScan for additional annotations
 
 ---
 
-## 性能问题
+## Performance Issues
 
-### 问题13: 运行时间过长
+### Issue 12: Slow Runtime
 
-**症状:**
+**Symptoms:**
 ```
-流程运行超过24小时
+Pipeline runs for more than 24 hours
 ```
 
-**优化方案:**
-
-1. **增加线程数**
+**Solutions:**
+1. **Increase threads**
 ```bash
 THREADS=32 bash run_full_pipeline.sh
 ```
 
-2. **减少查询文件大小**
+2. **Reduce query file size**
 ```bash
-# 过滤短序列
+# Filter short sequences
 awk '/^>/{keep=length($0)>500} keep' proteins.pep > proteins_filtered.pep
 ```
 
-3. **使用快速模式**
+3. **Use fast mode**
 ```bash
 diamond blastp --ultra-sensitive --db db.dmnd --query proteins.pep
 ```
 
-### 问题14: 内存不足
+### Issue 13: Out of Memory
 
-**症状:**
+**Symptoms:**
 ```
 Killed (out of memory)
 ```
 
-**解决方案:**
+**Solutions:**
 
-1. **减少线程数**
+1. **Reduce thread count**
 ```bash
 THREADS=4 bash scripts/02_annotation_pipeline.sh
 ```
 
-2. **分块处理**
+2. **Use chunked processing**
 ```bash
-# Diamond分块
+# Diamond chunking
 diamond blastp --block-size 5 --db db.dmnd --query proteins.pep
 
-# HMMER分块
+# HMMER chunking
 hmmscan --max -E 1e-5 Pfam-A.hmm proteins.pep
 ```
 
-3. **增加swap**
+3. **Increase swap**
 ```bash
-# 查看当前内存
+# Check current memory
 free -h
 
-# 增加swap (如需4GB)
+# Add swap (e.g., 4GB)
 sudo dd if=/dev/zero of=/swapfile bs=1G count=4
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 ```
 
-### 问题15: 磁盘空间不足
+### Issue 14: Insufficient Disk Space
 
-**症状:**
+**Symptoms:**
 ```
 No space left on device
 ```
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 清理临时文件
+# Clean temporary files
 rm -rf tmp/
 
-# 清理conda缓存
+# Clean conda cache
 conda clean -a
 
-# 使用更小的数据库
-# 如只用SwissProt而非NR
+# Use smaller database
+# Use SwissProt instead of NR
 ```
 
 ---
 
-## 调试技巧
+## Debugging Tips
 
-### 启用调试模式
+### Enable Debug Mode
 
 ```bash
-# 在脚本开头添加
-set -x  # 打印执行的命令
+# Add at script beginning
+set -x  # Print executed commands
 
-# 或使用bash -x
+# Or use bash -x
 bash -x run_full_pipeline.sh
 ```
 
-### 查看中间结果
+### Check Intermediate Results
 
 ```bash
-# 检查每个步骤的输出
+# Check each step output
 ls -lh annotation_results/
 
-# 查看日志
+# View logs
 tail -50 pfam.log
 tail -50 diamond.log
 ```
 
-### 测试单个样本
+### Test with Small Dataset
 
 ```bash
-# 提取少量测试数据
+# Extract small test data
 head -100 input.gtf > test.gtf
 head -100 genome.fa > test.fa
 
-# 运行测试
+# Run test
 bash run_full_pipeline.sh test.gtf test.fa
 ```
 
 ---
 
-## 获取帮助
+## Getting Help
 
-如果以上方案都不能解决问题:
+If the above solutions don't resolve your issue:
 
-1. 检查日志文件中的详细错误信息
-2. 确认所有依赖软件版本
-3. 搜索类似问题: https://github.com/IceBear321/Transcriptome_Functional_Annotation/issues
-4. 提issue时附上:
-   - 错误信息完整内容
-   - 使用的命令
-   - 系统环境 (uname -a)
-   - 软件版本 (conda list)
+1. Check all software versions
+2. Check detailed error messages in log files
+3. Search similar issues: https://github.com/IceBear321/Transcriptome_Functional_Annotation/issues
+4. When opening an issue, include:
+   - Complete error message
+   - Command used
+   - System environment (`uname -a`)
+   - Software versions (`conda list` or `diamond --version`)

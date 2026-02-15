@@ -1,59 +1,59 @@
-# Step 1: 提取转录本序列
+# Step 1: Extract Transcript Sequences
 
-## 目的
+## Purpose
 
-从GTF注释文件和参考基因组FASTA文件中提取转录本的核苷酸序列。这是整个注释流程的基础，因为后续的ORF预测和蛋白质比对都依赖于转录本序列。
+Extract transcript nucleotide sequences from GTF annotation file and reference genome FASTA file. This is the foundation for the entire annotation pipeline, as subsequent ORF prediction and protein alignment depend on transcript sequences.
 
-## 使用工具
+## Tool Used
 
-**gffread**: GFFutils工具包的一部分，用于从GTF/GFF提取序列。
+**gffread**: Part of the GFFutils toolkit, used to extract sequences from GTF/GFF files.
 
-## 命令
+## Command
 
 ```bash
 gffread input.gtf -g genome.fa -w transcripts.fa
 ```
 
-## 参数说明
+## Parameter Description
 
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `input.gtf` | 输入GTF文件 | `stringtie_long.hq.gtf` |
-| `-g genome.fa` | 参考基因组FASTA | `/path/to/genome.fa` |
-| `-w transcripts.fa` | 输出转录本FASTA | `transcripts.fa` |
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `input.gtf` | Input GTF file | `stringtie_long.hq.gtf` |
+| `-g genome.fa` | Reference genome FASTA | `/path/to/genome.fa` |
+| `-w transcripts.fa` | Output transcript FASTA | `transcripts.fa` |
 
-## 其他有用参数
+## Other Useful Parameters
 
 ```bash
-# 提取CDS序列
+# Extract CDS sequences
 gffread input.gtf -g genome.fa -x cds.fa
 
-# 提取蛋白质序列 (需要GTF中有CDS注释)
+# Extract protein sequences (requires CDS annotation in GTF)
 gffread input.gtf -g genome.fa -y protein.fa
 
-# 只保留转录本
+# Only keep transcripts
 gffread input.gtf -g genome.fa -w transcripts.fa -t transcript
 
-# 添加基因组坐标到序列ID
+# Add genomic coordinates to sequence IDs
 gffread input.gtf -g genome.fa -w transcripts.fa -W
 ```
 
-## 输入文件要求
+## Input File Requirements
 
-### GTF格式要求
+### GTF Format Requirements
 
-1. 必须包含`transcript`类型的行
-2. 必须有`transcript_id`属性
-3. 基因组FASTA的染色体名称必须与GTF中的染色体名称完全匹配
+1. Must contain `transcript` type lines
+2. Must have `transcript_id` attribute
+3. Chromosome names in genome FASTA must exactly match those in GTF
 
-示例GTF行:
+Example GTF line:
 ```
 chr1    StringTie   transcript  11873   14409   .   +   .   gene_id "MSTRG.1"; transcript_id "MSTRG.1.1";
 ```
 
-### 基因组FASTA格式
+### Genome FASTA Format
 
-标准FASTA格式，染色体名称必须与GTF匹配:
+Standard FASTA format, chromosome names must match GTF:
 ```
 >chr1
 ATGCGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
@@ -61,9 +61,9 @@ ATGCGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
 GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
 ```
 
-## 输出文件格式
+## Output File Format
 
-FASTA格式，每条序列的header包含转录本ID:
+FASTA format, each sequence header contains transcript ID:
 
 ```
 >MSTRG.1.1
@@ -72,55 +72,55 @@ ATGCGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
 GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA...
 ```
 
-## 常见问题
+## Common Issues
 
-### 问题1: 染色体名称不匹配
+### Issue 1: Chromosome Name Mismatch
 
-**错误信息:**
+**Error:**
 ```
 Error: chromosome 'chr1' not found in genome file!
 ```
 
-**解决方案:**
-检查GTF和基因组FASTA中的染色体命名是否一致。可能需要统一命名方式:
+**Solution:**
+Check if chromosome naming is consistent between GTF and genome FASTA. May need to unify naming:
 ```bash
-# 统一添加chr前缀
+# Add chr prefix consistently
 sed -i 's/^>/>chr/' genome.fa
 
-# 或去掉chr前缀
+# Or remove chr prefix
 sed -i 's/^chr//' genome.fa
 ```
 
-### 问题2: GTF中缺少转录本
+### Issue 2: Missing Transcripts in GTF
 
-**检查方法:**
+**Check:**
 ```bash
-# 统计GTF中转录本数量
+# Count transcripts in GTF
 grep -c 'transcript' input.gtf
 
-# 检查是否有正确的属性
+# Check for correct attributes
 grep 'transcript' input.gtf | head -5
 ```
 
-### 问题3: 提取的序列数量少于预期
+### Issue 3: Extracted Sequence Count Lower than Expected
 
-可能原因:
-- GTF中部分转录本没有有效的坐标范围
-- 基因组版本不匹配
+Possible causes:
+- Some transcripts in GTF don't have valid coordinate ranges
+- Genome version mismatch
 
-**解决方案:**
+**Solution:**
 ```bash
-# 验证GTF文件
+# Validate GTF file
 gffread -E input.gtf -o /dev/null 2>&1
 
-# 检查GTF转录本是否完整
+# Check if GTF transcripts are complete
 gffread input.gtf -g genome.fa -w /dev/null -v
 ```
 
-## 性能提示
+## Performance Tips
 
-- gffread支持多线程，但主要瓶颈在文件IO
-- 对于大型基因组，建议提前创建faidx索引:
+- gffread supports multithreading, but main bottleneck is file I/O
+- For large genomes, pre-create faidx index:
 ```bash
 samtools faidx genome.fa
 ```

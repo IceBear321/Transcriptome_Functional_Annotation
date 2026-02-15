@@ -1,14 +1,14 @@
-# Step 4: Pfam蛋白质结构域注释
+# Step 4: Pfam Protein Domain Annotation
 
-## 目的
+## Purpose
 
-使用Pfam数据库对预测的蛋白质进行结构域注释，识别蛋白质家族和保守区域，为功能注释提供额外信息。
+Annotate predicted proteins with protein domains using the Pfam database to identify protein families and conserved regions, providing additional information for functional annotation.
 
-## 使用工具
+## Tool Used
 
-**HMMER (hmmscan)**: 使用隐马尔可夫模型(HMM)进行蛋白质结构域比对。
+**HMMER (hmmscan)**: Uses Hidden Markov Models (HMM) for protein domain alignment.
 
-## 命令
+## Command
 
 ```bash
 hmmscan --cpu 16 \
@@ -17,66 +17,66 @@ hmmscan --cpu 16 \
     transcripts.transdecoder.pep > pfam.log
 ```
 
-## 参数说明
+## Parameter Description
 
-| 参数 | 说明 | 建议值 |
-|------|------|--------|
-| `--cpu` | 并行线程数 | 16 |
-| `--domtblout` | domain table输出文件 | (必需) |
-| `-E` | 全局E-value阈值 | 1e-5 |
-| `--domE` | domain E-value阈值 | 1e-5 |
-| `--domT` | domain bitscore阈值 | 可选 |
+| Parameter | Description | Recommended |
+|-----------|-------------|-------------|
+| `--cpu` | Number of parallel threads | 16 |
+| `--domtblout` | Domain table output file | (required) |
+| `-E` | Global E-value threshold | 1e-5 |
+| `--domE` | Domain E-value threshold | 1e-5 |
+| `--domT` | Domain bitscore threshold | optional |
 
-## 输出格式
+## Output Format
 
-### Domain Table格式
+### Domain Table Format
 
-| 列 | 说明 |
-|----|------|
-| 1 | 目标名称 (Pfam ID) |
-| 2 | 目标.accession |
-| 3 | 查询名称 |
-| 4 | 查询.accession |
-| 5 | 全局E-value |
-| 6 | 全局bitscore |
-| 7 | 全局覆盖率 |
-| 8 | 序列数 |
-| 9 | 域名数 |
-| 10 | domain E-value |
-| 11 | domain bitscore |
-| 12 | domain覆盖率 |
-| 13-14 | 域在查询中的位置 |
-| 15-16 | 域在HMM中的位置 |
-| 17 | 氨基酸 |
-| 18-22 | 描述 |
+| Column | Description |
+|--------|-------------|
+| 1 | Target name (Pfam ID) |
+| 2 | Target accession |
+| 3 | Query name |
+| 4 | Query accession |
+| 5 | Global E-value |
+| 6 | Global bitscore |
+| 7 | Global coverage |
+| 8 | Number of sequences |
+| 9 | Number of domains |
+| 10 | Domain E-value |
+| 11 | Domain bitscore |
+| 12 | Domain coverage |
+| 13-14 | Domain position in query |
+| 15-16 | Domain position in HMM |
+| 17 | Amino acids |
+| 18-22 | Description |
 
-## 数据库准备
+## Database Preparation
 
-### 下载Pfam数据库
+### Download Pfam Database
 
 ```bash
-# 方法1: 从EBI下载
+# Method 1: Download from EBI
 wget -O Pfam-A.hmm.gz \
     ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
 gunzip Pfam-A.hmm.gz
 
-# 方法2: 使用conda
+# Method 2: Use conda
 conda install -c bioconda hmmer
 ```
 
-### 创建HMM索引
+### Create HMM Index
 
 ```bash
-# 压缩数据库 (必需)
+# Compress database (required)
 hmmpress Pfam-A.hmm
 
-# 验证
+# Verify
 hmmstat Pfam-A.hmm
 ```
 
-## 参数调优
+## Parameter Tuning
 
-### 严格注释
+### Strict Annotation
 ```bash
 hmmscan --cpu 16 \
     --domtblout strict_pfam.out \
@@ -84,7 +84,7 @@ hmmscan --cpu 16 \
     Pfam-A.hmm proteins.pep
 ```
 
-### 宽松注释 (捕获更多)
+### Loose Annotation (Capture More)
 ```bash
 hmmscan --cpu 16 \
     --domtblout loose_pfam.out \
@@ -92,7 +92,7 @@ hmmscan --cpu 16 \
     Pfam-A.hmm proteins.pep
 ```
 
-### 只保留高置信度
+### Only High Confidence
 ```bash
 # bitscore > 20
 hmmscan --cpu 16 \
@@ -101,14 +101,14 @@ hmmscan --cpu 16 \
     Pfam-A.hmm proteins.pep
 ```
 
-## 处理Pfam输出
+## Process Pfam Output
 
-### 提取最佳domain匹配
+### Extract Best Domain Matches
 
 ```python
 import pandas as pd
 
-# 读取domain table
+# Read domain table
 with open('TrinotatePFAM.out') as f:
     lines = f.readlines()
 
@@ -129,77 +129,77 @@ for line in lines:
 
 df = pd.DataFrame(results)
 
-# 对每个查询取最佳匹配
+# Get best match for each query
 best = df.sort_values('bitscore', ascending=False).groupby('query_id').first().reset_index()
 best.to_csv('pfam_best.tsv', sep='\t', index=False)
 ```
 
-## 常见问题
+## Common Issues
 
-### 问题1: 注释率低
+### Issue 1: Low Annotation Rate
 
-**可能原因:**
-1. 蛋白质太短
-2. 物种特异蛋白
-3. 数据库版本旧
+**Possible causes:**
+1. Proteins too short
+2. Species-specific proteins
+3. Outdated database version
 
-**解决方案:**
-- 检查蛋白质长度分布
-- 更新Pfam数据库
-- 使用InterProScan补充
+**Solutions:**
+- Check protein length distribution
+- Update Pfam database
+- Use InterProScan for supplementary annotations
 
-### 问题2: 运行时间过长
+### Issue 2: Running Time Too Long
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 增加线程
+# Increase threads
 hmmscan --cpu 32 ...
 
-# 使用hmmsearch (针对单序列)
+# Use hmmsearch (for single sequence)
 hmmsearch --cpu 16 Pfam-A.hmm protein.pep
 ```
 
-### 问题3: 内存不足
+### Issue 3: Insufficient Memory
 
-**解决方案:**
+**Solutions:**
 ```bash
-# 使用--max size限制
+# Use --max size limit
 hmmscan --cpu 16 --max Pfam-A.hmm proteins.pep
 ```
 
-## Pfam ID格式说明
+## Pfam ID Format Explanation
 
-- **PFxxxxx**: Pfam家族ID (如PF00001)
-- **PFxxxxx_xx**: 同源家族 (clan)
+- **PFxxxxx**: Pfam family ID (e.g., PF00001)
+- **PFxxxxx_xx**: Homologous family (clan)
 
-### 常用Pfam家族示例
+### Common Pfam Families
 
-| Pfam ID | 名称 | 功能 |
-|---------|------|------|
-| PF00004 | AAA | ATP酶家族 |
-| PF00069 | PKinase | 蛋白激酶 |
-| PF00118 | Cpn60_TCP1 | 分子伴侣 |
-| PF00533 | BRCT | DNA修复 |
-| PF07679 | I-set | 免疫球蛋白 |
+| Pfam ID | Name | Function |
+|---------|------|----------|
+| PF00004 | AAA | ATPase family |
+| PF00069 | PKinase | Protein kinase |
+| PF00118 | Cpn60_TCP1 | Molecular chaperone |
+| PF00533 | BRCT | DNA repair |
+| PF07679 | I-set | Immunoglobulin |
 
-## 验证结果
+## Verify Results
 
 ```bash
-# 统计有多少蛋白有Pfam注释
+# Count proteins with Pfam annotation
 awk '{print $3}' TrinotatePFAM.out | sort -u | wc -l
 
-# 查看最常见的Pfam
+# View most common Pfam
 awk '!/^#/{print $1}' TrinotatePFAM.out | sort | uniq -c | sort -rn | head -20
 
-# 查看E-value分布
+# View E-value distribution
 awk '!/^#/{print $10}' TrinotatePFAM.out | awk '{if($1<1e-10) print "high"; else if($1<1e-5) print "med"; else print "low"}' | sort | uniq -c
 ```
 
-## 与其他工具比较
+## Comparison with Other Tools
 
-| 工具 | 优点 | 数据库 |
-|------|------|--------|
-| HMMER/Pfam | 权威，注释准确 | Pfam |
-| InterProScan | 综合注释 | 多数据库 |
-| CDD/NCBI | 保守域 | CDD |
-| SMART | 信号通路 | SMART |
+| Tool | Advantages | Database |
+|------|------------|----------|
+| HMMER/Pfam | Authoritative, accurate annotation | Pfam |
+| InterProScan | Comprehensive annotation | Multiple databases |
+| CDD/NCBI | Conserved domains | CDD |
+| SMART | Signaling pathways | SMART |
