@@ -1,0 +1,25 @@
+# Ignore large database files
+*.dmnd
+*.hmm
+*.hmm.h3f
+*.hmm.h3i
+*.hmm.h3m
+*.fasta.gz
+*.fa.gz
+
+# Ignore output files
+annotation_results/
+*.gtf
+*.fa
+*.pep
+*.out
+*.tsv
+*.xls
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
