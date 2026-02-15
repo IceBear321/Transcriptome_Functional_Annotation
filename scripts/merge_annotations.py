@@ -174,7 +174,7 @@ def main():
     print("Merging annotations...", file=sys.stderr)
     out = base.merge(go_agg, on="SeqID", how="left")
     out = out.merge(kegg_agg, on="SeqID", how="left")
-    out = out.merge(kogg_agg, on="SeqID", how="left")
+    out = out.merge(kog_agg, on="SeqID", how="left")
     out = out.merge(pfam_agg, on="SeqID", how="left")
     out = out.fillna("")
     
